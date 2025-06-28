@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  name      String?
+  password  String    // hashed
+  createdAt DateTime  @default(now())
+
+  // Relations
+  trades         Trade[]
+  journalEntries JournalEntry[]
+  tags           Tag[]
+  emotions       Emotion[]
+  setupReasons   SetupReason[]
+}
+
+model Trade {
+  id           Int             @id @default(autoincrement())
+  user         User            @relation(fields: [userId], references: [id])
+  userId       Int
+
+  symbol       String
+  side         TradeSide
+  entryPrice   Float
+  exitPrice    Float
+  quantity     Int
+  entryTime    DateTime
+  exitTime     DateTime
+  pnl          Float           @default(0)
+  holdingTime  Int             @default(0) // in minutes
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relations
+  journal      JournalEntry[]
+  tags         Tag[]           @relation("TradeTags")
+  emotions     Emotion[]       @relation("TradeEmotions")
+  setup        SetupReason?    @relation(fields: [setupId], references: [id])
+  setupId      Int?
+}
+
+model JournalEntry {
+  id        Int       @id @default(autoincrement())
+  trade     Trade     @relation(fields: [tradeId], references: [id])
+  tradeId   Int
+
+  user      User      @relation(fields: [userId], references: [id])
+  userId    Int
+
+  content   String
+  createdAt DateTime  @default(now())
+}
+
+model Tag {
+  id      Int       @id @default(autoincrement())
+  name    String
+  user    User      @relation(fields: [userId], references: [id])
+  userId  Int
+
+  trades  Trade[]   @relation("TradeTags")
+
+  @@unique([userId, name])
+}
+
+model Emotion {
+  id      Int       @id @default(autoincrement())
+  label   String
+  user    User      @relation(fields: [userId], references: [id])
+  userId  Int
+
+  trades  Trade[]   @relation("TradeEmotions")
+
+  @@unique([userId, label])
+}
+
+model SetupReason {
+  id      Int       @id @default(autoincrement())
+  reason  String
+  user    User      @relation(fields: [userId], references: [id])
+  userId  Int
+
+  trades  Trade[]
+}
+
+enum TradeSide {
+  long
+  short
+}
